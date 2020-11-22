@@ -1,0 +1,127 @@
+#!/usr/bin/env python
+# display what music is currently playing, or say something wise
+
+import sys
+import os.path
+import time
+import random
+import mpris2
+import argparse
+
+lines = [
+  "The perfect is the enemy of the good.",
+  "The world is everything that is the case.",
+  "Whereof one cannot speak one must remain silent."
+]
+
+OLD_FILENAME    = ".lastwise"
+TIME_INTERVAL   = 600
+MAX_LEN         = 80
+MARQUEE_SPACE   = 10
+MARQUEE_STRIDE  = 2
+
+def say(msg):
+  if len(msg) <= MAX_LEN:
+    print msg
+
+  # marquee if the message is too long
+  else:
+    m = int(time.time())
+    mi = ((m % len(msg)) * MARQUEE_STRIDE) % len(msg)
+    print m, mi, len(msg)
+    pref = msg[mi:mi+MAX_LEN]
+    suflen = MAX_LEN - len(pref) if MAX_LEN - len(pref) > 0 else 0
+    suf = msg[:suflen]
+    print "{}{}{}".format(pref, " " * MARQUEE_SPACE, suf)
+
+def get_player():
+  players = mpris2.get_players_uri()
+  player_uri = next(players, None)
+
+  if player_uri is None:
+    return None
+
+  else:
+    return mpris2.Player(dbus_interface_info={"dbus_uri": player_uri})
+
+def wisesay():
+  filedir = os.path.dirname(__file__)
+  oldfile = os.path.join(filedir, OLD_FILENAME)
+  cur_time = int(time.time())
+
+  def saynew():
+    wise = random.choice(lines)
+
+    with open(oldfile, "w") as f:
+      f.writelines([str(cur_time), "\n", wise])
+
+    say(wise)
+
+  if os.path.isfile(oldfile):
+    # check if last time saying was changed is too early
+    elapsed = -1
+
+    with open(oldfile) as f:
+      oldlines = f.readlines()
+      last_time = int(oldlines[0])
+      elapsed = cur_time - last_time
+
+      if elapsed >= TIME_INTERVAL:
+        saynew()
+
+      else:
+        say(oldlines[1])
+
+  else:
+    saynew()
+
+def musicsay():
+  player = get_player()
+
+  if player is None:
+    wisesay()
+
+  elif player.PlaybackStatus == "Playing":
+    song = str(player.Metadata["xesam:title"])
+    artist = str(player.Metadata["xesam:artist"][0])
+    say("{} - {}".format(artist, song))
+
+  else:
+    return ""
+    # wisesay()
+
+def withplayer(func):
+  def inner():
+    player = get_player()
+
+    if player is not None:
+      func(player)
+
+  return inner
+
+@withplayer
+def musictoggle(player):
+  player.PlayPause()
+
+@withplayer
+def musicnext(player):
+  player.Next()
+
+@withplayer
+def musicprev(player):
+  player.Previous()
+
+def main(argv):
+  if len(argv) == 1:
+    musicsay()
+
+  elif argv[1] == "toggle":
+    musictoggle()
+
+  elif argv[1] == "next":
+    musicnext()
+
+  elif argv[1] == "prev":
+    musicprev()
+
+main(sys.argv)
