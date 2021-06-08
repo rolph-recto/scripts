@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # display what music is currently playing, or say something wise
 
 import sys
@@ -22,17 +22,17 @@ MARQUEE_STRIDE  = 2
 
 def say(msg):
   if len(msg) <= MAX_LEN:
-    print msg
+    print(msg)
 
   # marquee if the message is too long
   else:
     m = int(time.time())
     mi = ((m % len(msg)) * MARQUEE_STRIDE) % len(msg)
-    print m, mi, len(msg)
+    print(m, mi, len(msg))
     pref = msg[mi:mi+MAX_LEN]
     suflen = MAX_LEN - len(pref) if MAX_LEN - len(pref) > 0 else 0
     suf = msg[:suflen]
-    print "{}{}{}".format(pref, " " * MARQUEE_SPACE, suf)
+    print("{}{}{}".format(pref, " " * MARQUEE_SPACE, suf))
 
 def get_player():
   players = mpris2.get_players_uri()
